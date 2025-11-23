@@ -47,18 +47,13 @@ app.post('/', async (req, res) => {
             // Define the credentials object
             const creds = {
                 client_email: process.env.CLIENT_EMAIL,
-                // Ensure you use the .replace(/\\n/g, '\n') to handle the private key 
-                // stored as an environment variable (which escapes newlines).
                 private_key: process.env.PRIVATE_KEY.replace(/\\n/g, '\n'),
             };
 
-            // 1. Initialize the doc object without immediate auth
-            const doc = new GoogleSpreadsheet(SPREADSHEET_ID);
+            // 1. Initialize the doc object *with* the credentials. (Correct for v4.x)
+            const doc = new GoogleSpreadsheet(SPREADSHEET_ID, { auth: creds });
 
-            // 2. *** AUTHENTICATE HERE *** // This correctly configures the doc instance for Service Account use.
-            await doc.useServiceAccountAuth(creds);
-
-            // 3. Load the document structure asynchronously. (This should now work)
+            // 2. Load the document structure asynchronously.
             await doc.loadInfo();
             // ==========================================================
 
