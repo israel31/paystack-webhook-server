@@ -16,8 +16,6 @@ const EMAIL_COLUMN_INDEX = 2; // Column C
 const STATUS_COLUMN_INDEX = 7; // Column H
 const STATUS_PAID = 'Paid';
 
-// --- GOOGLE SHEET INITIALIZATION ---
-const doc = new GoogleSpreadsheet(SPREADSHEET_ID);
 
 // This route receives the webhook from Paystack
 app.post('/', async (req, res) => {
@@ -46,14 +44,20 @@ app.post('/', async (req, res) => {
             const customerEmail = eventData.data.customer.email;
             console.log(`Processing secure payment for: ${customerEmail}`);
 
-            // Authenticate with Google using Service Account
+            // === FIX IS HERE: Initialize and Authenticate inside the async function ===
+            
+            // Re-initialize the doc object inside the function
+            const doc = new GoogleSpreadsheet(SPREADSHEET_ID); 
+
+            // Define the credentials object
             const creds = {
                 client_email: process.env.CLIENT_EMAIL,
                 private_key: process.env.PRIVATE_KEY.replace(/\\n/g, '\n'),
             };
-            // Then we use the credentials to initialize authentication
-            await doc.useServiceAccountAuth(creds);
 
+            // Authenticate using the Service Account
+            await doc.useServiceAccountAuth(creds);
+            
             await doc.loadInfo();
             // Assuming your sheet is the first tab (index 0)
             const sheet = doc.sheetsByIndex[0];
@@ -61,16 +65,15 @@ app.post('/', async (req, res) => {
 
             // 4. Find and Update Row
             for (const row of rows) {
-                // Accessing the row data. The column indexes are 0-based.
-                // We use trim() and toLowerCase() for robust matching.
-                const sheetEmail = row._rawData[EMAIL_COLUMN_INDEX];
-
+                const sheetEmail = row._rawData[EMAIL_COLUMN_INDEX]; 
+                
+                // Robust lookup check: Ensure sheet data is a string and compare
                 if (sheetEmail && sheetEmail.toString().trim().toLowerCase() === customerEmail.toLowerCase()) {
                     // Update the status column (Column H is index 7)
                     row._rawData[STATUS_COLUMN_INDEX] = STATUS_PAID;
-                    await row.save();
+                    await row.save(); 
                     console.log(`Status updated to Paid for: ${customerEmail}`);
-                    return;
+                    return; 
                 }
             }
         }
