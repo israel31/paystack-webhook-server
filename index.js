@@ -43,19 +43,23 @@ app.post('/', async (req, res) => {
         if (eventData.event === 'charge.success') {
             const customerEmail = eventData.data.customer.email;
             console.log(`Processing secure payment for: ${customerEmail}`);
-            
+
             // Define the credentials object
             const creds = {
                 client_email: process.env.CLIENT_EMAIL,
+                // Ensure you use the .replace(/\\n/g, '\n') to handle the private key 
+                // stored as an environment variable (which escapes newlines).
                 private_key: process.env.PRIVATE_KEY.replace(/\\n/g, '\n'),
             };
 
-            // === DEFINITIVE FIX IS HERE: Authenticate via Constructor ===
-            // 1. Initialize the doc object *with* the credentials.
-            const doc = new GoogleSpreadsheet(SPREADSHEET_ID, { auth: creds }); 
+            // 1. Initialize the doc object without immediate auth
+            const doc = new GoogleSpreadsheet(SPREADSHEET_ID);
 
-            // 2. Load the document structure asynchronously.
-            await doc.loadInfo(); 
+            // 2. *** AUTHENTICATE HERE *** // This correctly configures the doc instance for Service Account use.
+            await doc.useServiceAccountAuth(creds);
+
+            // 3. Load the document structure asynchronously. (This should now work)
+            await doc.loadInfo();
             // ==========================================================
 
             // Assuming your sheet is the first tab (index 0)
@@ -64,14 +68,14 @@ app.post('/', async (req, res) => {
 
             // 4. Find and Update Row
             for (const row of rows) {
-                const sheetEmail = row._rawData[EMAIL_COLUMN_INDEX]; 
+                const sheetEmail = row._rawData[EMAIL_COLUMN_INDEX];
 
                 if (sheetEmail && sheetEmail.toString().trim().toLowerCase() === customerEmail.toLowerCase()) {
                     // Update the status column (Column H is index 7)
                     row._rawData[STATUS_COLUMN_INDEX] = STATUS_PAID;
-                    await row.save(); 
+                    await row.save();
                     console.log(`Status updated to Paid for: ${customerEmail}`);
-                    return; 
+                    return;
                 }
             }
         }
