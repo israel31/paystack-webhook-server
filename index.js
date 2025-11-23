@@ -47,7 +47,7 @@ app.post('/', async (req, res) => {
             // Define the credentials object
             const creds = {
                 client_email: process.env.CLIENT_EMAIL,
-                private_key: process.env.PRIVATE_KEY.replace(/\\n/g, '\n'),
+                private_key: JSON.parse(`"${process.env.PRIVATE_KEY}"`),
             };
 
             // 1. Initialize the doc object *with* the credentials. (Correct for v4.x)
